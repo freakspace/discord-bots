@@ -1,0 +1,7 @@
+python-dotenv == 0.21.1
+py-cord == 2.4.1
+requests == 2.31.0
+pytz == 2023.3
+peewee == 3.16.2
+mysql-connector-python == 8.0.33
+pymysql == 1.0.3
