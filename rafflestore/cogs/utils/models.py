@@ -13,11 +13,11 @@ class Raffle(BaseModel):
     image_url = CharField()
     price = CharField()
     duration = DateTimeField()
-    winners = SmallIntegerField()
+    stock = IntegerField(default=99999)
+    max_qty_user = IntegerField(default=1) # Determine max qty a user can buy
+    unique_winners = BooleanField() # Dertermine if the same winner can be picked more than once
     sold = IntegerField()
     visible = BooleanField()
-    has_winner = BooleanField()
-
 
 
 class Receipt(BaseModel):
@@ -25,6 +25,7 @@ class Receipt(BaseModel):
     raffle = ForeignKeyField(Raffle, backref="raffle_receipts")
     purchase_date = DateTimeField()
     owned = IntegerField()
+    is_winner = BooleanField()
 
 
 def transaction_model(server_id: int):

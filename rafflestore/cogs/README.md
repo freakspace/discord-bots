@@ -27,6 +27,7 @@ python fill_db.py
 1. Create `.env` in the root and add variables `"ENVIRONMENT"`, `"DISCORD_TOKEN"`, `"API_KEY"` and the following:
 
 For local development:
+
 `"DATABASE_LOCAL"`
 
 `"USER_LOCAL"`
@@ -38,6 +39,7 @@ For local development:
 `"PORT_LOCAL"`
 
 For stage devnet:
+
 `"DATABASE_STAGE_DEVNET"`
 
 `"USER_STAGE_DEVNET"`
@@ -49,6 +51,7 @@ For stage devnet:
 `"PORT_STAGE_DEVNET"`
 
 For stage mainnet
+
 `"DATABASE_STAGE_MAINNET"`
 
 `"USER_STAGE_MAINNET"`
@@ -60,6 +63,7 @@ For stage mainnet
 `"PORT_STAGE_MAINNET"`
 
 For production
+
 `"DATABASE_PROD"`
 
 `"USER_PROD"`

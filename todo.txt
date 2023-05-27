@@ -1,0 +1,5 @@
+add stock
+add max qty / user
+add unique winner (boolean) (if true, same winner cant be picked again)
+remove winners field
+requirements: own NFT from contract, own certain NFTs by id, min NFTs owned, max nft owned
