@@ -248,6 +248,13 @@ async def buy_item(interaction, item: Raffle, quantity: int, guild: GuildObject)
         await interaction.followup.send(message, ephemeral=True)
         return
     
+    # endpoint: ownership/[collection_id]/[discord_user_id] --> list[1,2,3]
+
+    # Check own NFT from contract (check if list is not empty)
+    # Check own certain NFTs by id (match owned ID's with which ever ID's are stored in database)
+    # Check min NFTs owned (match with length of list)
+    # Check max nft owned (match with length of list)
+    
     # Check user quantity
     user_receipt = get_receipt(discord_user_id=interaction.user.id, raffle=item)
 
