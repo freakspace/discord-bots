@@ -23,7 +23,8 @@ from utils.utils import (
 
 from utils.services import (
     increment_or_create_receipt,
-    increment_total_sold,
+    get_receipt,
+    decrement_stock,
     create_raffle,
 )
 
@@ -87,12 +88,11 @@ def generate_item_embed(store_item: object):
         color=discord.Color.green()
     )
 
-    sold = store_item.sold
-
     embed.set_thumbnail(url=store_item.image_url)
     embed.add_field(name="Price", value=guild.to_locale(
         store_item.price), inline=True)
-    embed.add_field(name="Sold", value=sold, inline=True)
+    embed.add_field(name="Stock", value=store_item.stock, inline=True)
+    embed.add_field(name="Sold", value=store_item.sold, inline=True)
     embed.set_image(url="https://s4.gifyu.com/images/transparent_line.png")
 
     time_end = utc.localize(
@@ -238,7 +238,6 @@ async def delete_item(interaction, store_id: str, item_id: int, title: str):
     await interaction.response.send_message(f"{title} has been deleted", ephemeral=True)
 
 
-# TODO Test token here
 async def buy_item(interaction, item: Raffle, quantity: int, guild: GuildObject):
     total_price = int(item.price) * quantity
 
@@ -246,6 +245,23 @@ async def buy_item(interaction, item: Raffle, quantity: int, guild: GuildObject)
     if not check_sale_active(item=item):
         message = f"""
             Hold on buddy, this sale is not longer available!"""
+        await interaction.followup.send(message, ephemeral=True)
+        return
+    
+    # Check user quantity
+    user_receipt = get_receipt(discord_user_id=interaction.user.id, raffle=item)
+
+    if user_receipt:
+        if user_receipt.owned >= item.max_qty_user:
+            message = f"""
+                Take a break son, that's more than you're allowed to buy!"""
+            await interaction.followup.send(message, ephemeral=True)
+            return
+    
+    # Check if stock
+    if quantity > item.stock:
+        message = f"""
+            Hold on buddy, that's more than we have in stock!"""
         await interaction.followup.send(message, ephemeral=True)
         return
 
@@ -279,20 +295,20 @@ Hold up! You don't have enough {guild.token_name}!
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
         return
 
-    elif balance >= total_price:
+    print(f"Total price: {total_price}")
+    # Debit the users balance
+    guild.debit(
+        discord_user_id=interaction.user.id,
+        amount=total_price,
+        note=f"Bought Raffle Ticket: {item.title} x {quantity}"
+    )
 
-        # Debit the users balance
-        guild.debit(
-            discord_user_id=interaction.user.id,
-            amount=total_price,
-            note=f"Bought Raffle Ticket: {item.title} x {quantity}"
-        )
-
-        guild.credit(
-            discord_user_id=guild.token_collector,
-            amount=total_price,
-            note=f"Sold Raffle Ticket: {item.title} x {quantity}"
-        )
+    # Credit the token collector
+    guild.credit(
+        discord_user_id=guild.token_collector,
+        amount=total_price,
+        note=f"Sold Raffle Ticket: {item.title} x {quantity}"
+    )
 
     # Calling database: Increment existing receipt or create a new one
     increment_or_create_receipt(
@@ -301,8 +317,9 @@ Hold up! You don't have enough {guild.token_name}!
         quantity=quantity
     )
 
-    # Call db to increment total sold
-    increment_total_sold(raffle=item, quantity=quantity)
+    # Call db to decrement stock
+    decrement_stock(raffle=item, quantity=quantity)
+
 
     # Generate the embed
     winner_announcements = f"Winners will be announced in the <#{get_raffle_winner_channel(server_id=interaction.guild.id)}> channel soon"
@@ -502,9 +519,11 @@ class RaffleStoreView(discord.ui.View):
 
 
 class CreateItemModal(discord.ui.Modal):
-    def __init__(self, guild: GuildObject, winners: int, *args, **kwargs) -> None:
+    def __init__(self, guild: GuildObject, stock: int, max_qty_user=int, unique_winners=bool, *args, **kwargs) -> None:
         self.guild = guild
-        self.winners = winners
+        self.stock = stock
+        self.max_qty_user = max_qty_user
+        self.unique_winners = unique_winners
 
         super().__init__(*args, **kwargs)
         self.add_item(discord.ui.InputText(label="Item Name"))
@@ -664,24 +683,13 @@ Make sure to include https:// in the image url
                 image_url=item_image,
                 price=self.guild.from_eth(price),
                 duration=item_duration,
-                winners=self.winners
+                stock=self.stock,
+                max_qty_user=self.max_qty_user,
+                unique_winners=self.unique_winners
             )
             await interaction.response.send_message("All done, item added.", ephemeral=True)
         except Exception as e:
             await interaction.response.send_message(e, ephemeral=True)
-
-
-class CreateRaffleButton(discord.ui.Button):
-    def __init__(self, guild: GuildObject, winners: int):
-        self.guild = guild
-        self.winners = winners
-        super().__init__(
-            label=f"Create {self.guild.token_name} Raffle",
-            style=discord.ButtonStyle.primary,
-        )
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_modal(CreateItemModal(title="Create Item", guild=self.guild, winners=self.winners))
 
 
 class HideRaffleButton(discord.ui.Button):
@@ -715,8 +723,8 @@ class RaffleStore(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.persistent_views_added = False
-        self.pick_winners.start()
-        self.hide_raffles.start()
+        # self.pick_winners.start()
+        # self.hide_raffles.start()
 
     @discord.slash_command()
     async def prepare_raffle(
@@ -774,7 +782,10 @@ I ain't got all day.
     async def add_raffle(
         self,
         ctx: commands.Context,
-        winners: discord.Option(int, "How many winners?")
+        stock: discord.Option(int, "How many raffle tickets can be sold?"),
+        max_qty_user: discord.Option(int, "What's maximum qty a user can buy?"),
+        unique_winners: discord.Option(bool, "Only select unique winners?")
+        
     ):
         """Create an item in the Raffle Store"""
         member = ctx.guild.get_member(int(ctx.user.id))
@@ -789,7 +800,12 @@ I ain't got all day.
 
             guild = GuildObject(server_id=ctx.guild.id)
 
-            await ctx.response.send_modal(CreateItemModal(title="Create Item", guild=guild, winners=winners))
+            await ctx.response.send_modal(CreateItemModal(
+                title="Create Item", 
+                guild=guild, 
+                stock=stock, 
+                max_qty_user=max_qty_user, 
+                unique_winners=unique_winners))
 
         else:
             await ctx.response.send_message(content="Nope.", ephemeral=True)
@@ -814,7 +830,7 @@ I ain't got all day.
     @tasks.loop(seconds=60*60)
     async def hide_raffles(self):
         print("Hiding raffles")
-        raffles = Raffle.select().where(Raffle.visible == True, Raffle.has_winner == True)
+        raffles = Raffle.select().where(Raffle.visible == True, Raffle.has_winner == True) # TODO Check has_winner works properly
         if raffles:
             for raffle in raffles:
                 delta = datetime.datetime.now() - raffle.duration
@@ -905,11 +921,14 @@ You have ⏰ `24 Hrs` To Claim Your Spot Before This Message is Deleted!!!
                 color=discord.Color.red()
             )
             await ctx.followup.send(embed=embed, ephemeral=True)
+        
+        # Convert to wei
+        converted_amount = guild.from_eth(amount)
 
-        guild.credit(member.id, amount, "Magic")
+        guild.credit(member.id, converted_amount, "Magic")
 
         embed = discord.Embed(
-            title=f"{member.display_name} has been credited {amount} {guild.token_name}",
+            title=f"{member.display_name} has been credited {guild.to_locale(converted_amount)}",
             description="",
             color=discord.Color.green()
         )

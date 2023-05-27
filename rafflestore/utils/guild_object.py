@@ -40,17 +40,16 @@ class GuildObject:
                 discord_user_id=discord_user_id
             )
 
-    def credit(self, discord_user_id: int, amount: float, note: str):
+    def credit(self, discord_user_id: int, amount: str, note: str):
         """
         Credit a specific amount to a discord_user_id with a note.
-        : expects the amount in eth as a float
+        : expects the amount in wei as a string
         """
-        converted_amount = self.from_eth(amount)
 
         return credit_tx(
             server_id=self.server_id, 
             discord_user_id=discord_user_id, 
-            amount=converted_amount,
+            amount=amount,
             note=note
         )
 
@@ -59,8 +58,6 @@ class GuildObject:
         Debit a specific amount from a discord_user_id with a note.
         : expects the amount in wei as a string
         """
-
-        # converted_amount = self.from_eth(amount)
 
         return debit_tx(
                 self.server_id, 

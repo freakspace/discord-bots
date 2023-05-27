@@ -12,12 +12,13 @@ def fill_tables():
         title='Test 1',
         description='Test 1',
         image_url='https://placehold.co/300x200?text=Placeholder',
-        price='100000000000000',
+        price='10000000000000000',
         duration=duration,
-        winners=2,
+        stock=1000,
+        max_qty_user=10,
+        unique_winners=True,
         sold=0,
         visible=True,
-        has_winner=False
     )
 
     # Add a record to the Guild table

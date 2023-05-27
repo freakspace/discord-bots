@@ -13,7 +13,9 @@ def create_raffle(
         image_url: str, 
         price: float, 
         duration: str,
-        winners: int
+        stock: int,
+        max_qty_user=int,
+        unique_winners=bool
         ):
 
     duration = duration.split(" ")
@@ -32,7 +34,9 @@ def create_raffle(
                 image_url=image_url,
                 price=price, 
                 duration=duration,
-                winners=winners,
+                stock=stock,
+                max_qty_user=max_qty_user,
+                unique_winners=unique_winners,
                 sold=0,
                 visible=True,
                 has_winner=False
@@ -65,7 +69,7 @@ def credit_tx(server_id: int, discord_user_id: int, amount: str, note: str):
     balance = get_balance(server_id=server_id, discord_user_id=discord_user_id)
     
     new_balance = str(int(balance) + int(amount))
-
+    print(f"Crediting {amount}")
     try:
         with database.atomic():
             transaction.create(
@@ -96,6 +100,7 @@ def debit_tx(server_id: int, discord_user_id: int, amount: str, note: str):
         raise InsufficientFunds("Not enough funds")
     else:
         new_balance = str(int(balance) - int(amount))
+        print(f"Debiting {amount}")
         try:
             with database.atomic():
                 transaction.create(
@@ -143,10 +148,24 @@ def increment_or_create_receipt(
             owned = quantity
         )
 
-def increment_total_sold(raffle: object, quantity: int):
-    # Update total count on raffle
+
+def get_receipt(discord_user_id, raffle: Raffle):
+    try:
+        receipt = (Receipt
+                   .select()
+                   .where(
+                       Receipt.discord_user_id == discord_user_id,
+                       Receipt.raffle == raffle.id
+                   )
+                   .get())
+        return receipt
+    except Receipt.DoesNotExist:
+        return None
+
+    
+def decrement_stock(raffle: object, quantity: int):
     query = (Raffle
-    .update(sold=Raffle.sold + quantity)
+    .update(sold=Raffle.sold + quantity, stock=Raffle.stock - quantity)
     .where(Raffle.id == raffle.id))
     query.execute()
 
