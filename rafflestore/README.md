@@ -1,4 +1,4 @@
-# Lifty RaffleStore
+# RaffleStore
 
 ## Installation
 
