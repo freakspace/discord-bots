@@ -1,7 +1,10 @@
+import os
+
 import discord
 
 from utils.models import Guild, DoesNotExist
 
+environment = os.getenv("ENVIRONMENT")
 
 def get_admin_role(server_id: int):
     try:
@@ -91,3 +94,24 @@ def generate_option(title: str, value: str, description: str):
         description=description
     )
     return option
+
+async def send_notification_message(bot_or_client: object, message: str, channel_id: str):
+    """Sends a message to any channel by id"""
+    channel = bot_or_client.get_channel(int(channel_id))
+    if channel != None:
+        await channel.send(message)
+    else:
+        print("Can´t find channel")
+        return
+    
+
+def get_domain():
+
+    domain = {
+        "local": "https://staging-devnet.degenlabz.com",
+        "stage-devnet": "https://staging-devnet.degenlabz.com",
+        "stage-mainnet": "https://staging-mainnet.degenlabz.com",
+        "prod": "https://degenz-verfication-git-master-degen-labz.vercel.app/"
+    }
+
+    return domain[environment]

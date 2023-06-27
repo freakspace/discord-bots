@@ -6,6 +6,13 @@ class BaseModel(Model):
     class Meta:
         database = database
 
+
+class Player(BaseModel):
+    discord_user_id = CharField(unique=True)
+    join_date = DateTimeField()
+    bank_pin = CharField(null=True)
+
+
 class Raffle(BaseModel):
     server_id = CharField()
     title = CharField()
@@ -16,7 +23,7 @@ class Raffle(BaseModel):
     stock = IntegerField(default=99999)
     max_qty_user = IntegerField(default=1) # Determine max qty a user can buy
     unique_winners = BooleanField() # Dertermine if the same winner can be picked more than once
-    sold = IntegerField() # TODO omit
+    sold = IntegerField()
     visible = BooleanField()
 
     def has_winner(self):

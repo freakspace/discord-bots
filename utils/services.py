@@ -4,7 +4,7 @@ from peewee import IntegrityError, DoesNotExist, fn
 
 from utils.exceptions import InsufficientFunds
 
-from utils.models import transaction_model, Raffle, Receipt, database
+from utils.models import transaction_model, Raffle, Receipt, database, Player, Guild
 
 def create_raffle(
         server_id: int,
@@ -178,10 +178,62 @@ def get_latest_transaction(server_id: int, discord_user_id: int):
     except DoesNotExist:
         return None
 
+def get_transaction(server_id: int, tx_id: int):
+    try:
+        transaction_model = transaction_model(server_id=server_id)
+        return transaction_model.get(id=tx_id)
+    except:
+        return None
 
 def get_transactions(server_id: int, discord_user_id: int, max: int):
-    transaction = transaction_model(server_id=server_id)
+    transaction_model = transaction_model(server_id=server_id)
     try:
-        return transaction.select().where(transaction.discord_user_id == discord_user_id, transaction.status == 'success')[-max:]
+        return transaction_model.select().where(transaction_model.discord_user_id == discord_user_id, transaction_model.status == 'success')[-max:]
     except DoesNotExist:
         return None
+    
+
+def get_or_create_player(discord_user_id: int):
+    try:
+        player = Player.get(Player.discord_user_id == str(discord_user_id))
+        return player
+    except:
+        try:
+            with database.atomic():
+                player = Player.create(
+                    discord_user_id=discord_user_id,
+                    join_date=datetime.datetime.now()
+                )
+            return player
+        except IntegrityError as e:
+            print(f"Integrety error: {e}")
+            return None
+        
+
+def create_transaction_table(server_id: int):
+    """ Creates a new guild transaction table in the database  """
+    tables = database.get_tables()
+
+    table_name = f"token_transaction_" + str(server_id)
+
+    if table_name not in tables:
+        print("Creating Table")
+        model = transaction_model(server_id=server_id)
+
+        with database:
+            database.create_tables([model])
+
+
+def create_guild(server_id: int, server_name: str, role_admin: int):
+    try:
+        Guild.get(Guild.server_id == server_id)
+    except DoesNotExist:
+        try:
+            with database.atomic():
+                Guild.create(
+                    server_id=server_id,
+                    server_name=server_name,
+                    role_admin=role_admin
+                )
+        except IntegrityError as e:
+            return e

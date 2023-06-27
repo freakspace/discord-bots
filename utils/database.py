@@ -15,7 +15,7 @@ if environment == "local":
     use_sqlite = os.getenv("USE_SQLITE")
 
     if use_sqlite == "true":
-        db = SqliteDatabase('lifty.db')
+        db = SqliteDatabase('database.db')
     else:
     # Connect to a MySQL database on network.
         db = MySQLDatabase(
