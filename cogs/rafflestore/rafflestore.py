@@ -910,64 +910,6 @@ You have ⏰ `24 Hrs` To Claim Your Spot Before This Message is Deleted!!!
                     return
 
 
-    @discord.slash_command()
-    async def magic(
-        self,
-        ctx: commands.Context,
-        member: discord.Option(discord.Member, "Select Member", required=True),
-        amount: discord.Option(float, "Amount", required=True),
-        ):
-        """Magically Transfer Tokens - Probably don't use in prod"""
-        await ctx.response.defer(ephemeral=True)
-
-        guild = GuildObject(server_id=ctx.guild.id)
-
-        if ctx.user.id != int(guild.token_collector):
-            embed = discord.Embed(
-                title=f"You can't do that buddy",
-                color=discord.Color.red()
-            )
-            await ctx.followup.send(embed=embed, ephemeral=True)
-        
-        # Convert to wei
-        converted_amount = guild.from_eth(amount)
-
-        guild.credit(member.id, converted_amount, "Magic")
-
-        embed = discord.Embed(
-            title=f"{member.display_name} has been credited {guild.to_locale(converted_amount)}",
-            description="",
-            color=discord.Color.green()
-        )
-
-        await ctx.followup.send(embed=embed, ephemeral=True)
-    
-
-    @discord.slash_command()
-    async def balance(
-        self,
-        ctx: commands.Context,
-        member: discord.Option(discord.Member, "(Optional) Select Member",  required=False),
-        ):
-        """Get balance of a player"""
-        await ctx.response.defer(ephemeral=True)
-
-        guild = GuildObject(server_id=ctx.guild.id)
-
-        if member:
-            balance = guild.balance(member.id)
-        else:
-            balance = guild.balance(ctx.user.id)
-
-        embed = discord.Embed(
-            title=f"{member.display_name} has a balance of {guild.to_locale(balance)}",
-            description="",
-            color=discord.Color.green()
-        )
-
-        await ctx.followup.send(embed=embed, ephemeral=True)
-
-
     @commands.Cog.listener()
     async def on_ready(self):
         if not self.persistent_views_added:

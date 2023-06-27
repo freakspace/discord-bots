@@ -14,8 +14,9 @@ With the right developer this bot can serve as a payment gateway for any blockch
 
 ## Commands
 
-- Balance
-- Transfer
+- /balance (check player's balance)
+- /transfer (transfer from one player to another)
+- /work (grant a fixed amount of money)
 
 ## Installation
 

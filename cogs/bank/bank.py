@@ -977,6 +977,7 @@ class BankingBot(commands.Cog):
 
         await ctx.followup.send(embed=embed, ephemeral=True)
 
+
     @discord.slash_command()
     async def transfer(
         self,
@@ -1037,6 +1038,39 @@ class BankingBot(commands.Cog):
                 await send_notification_message(bot_or_client=ctx.interaction.client, message=hall_message, channel_id=notification_channel_id)
 
             await ctx.followup.send(embed=embed, ephemeral=True)
+    
+
+    @discord.slash_command()
+    async def work(
+        self,
+        ctx: commands.Context,
+        member: discord.Option(discord.Member, "Select Member", required=True),
+        amount: discord.Option(float, "Amount", required=True),
+        ):
+        """Magically Transfer Tokens - Probably don't use in prod"""
+        await ctx.response.defer(ephemeral=True)
+
+        guild = GuildObject(server_id=ctx.guild.id)
+
+        if ctx.user.id != int(guild.token_collector):
+            embed = discord.Embed(
+                title=f"You can't do that buddy",
+                color=discord.Color.red()
+            )
+            await ctx.followup.send(embed=embed, ephemeral=True)
+        
+        # Convert to wei
+        converted_amount = guild.from_eth(amount)
+
+        guild.credit(member.id, converted_amount, "Magic")
+
+        embed = discord.Embed(
+            title=f"{member.display_name} has been credited {guild.to_locale(converted_amount)}",
+            description="",
+            color=discord.Color.green()
+        )
+
+        await ctx.followup.send(embed=embed, ephemeral=True)
 
     @tasks.loop(seconds=60*60)
     async def update_banking_view(self):

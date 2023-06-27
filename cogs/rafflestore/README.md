@@ -17,8 +17,6 @@ If you implement blockchain API calls in the bankingbot, it will allow you to se
 - /prepare_raffle
 - /add_raffle
 - /remove_raffle
-- /magic (will credit a player)
-- /balance (is redundant if bank is used)
 
 ## Task
 
