@@ -20,7 +20,8 @@ bot_rafflestore = commands.Bot(intents=intents, auto_sync_commands=True)
 
 
 cogs_list_rafflestore = [
-    "rafflestore",
+    #"rafflestore",
+    "bank"
 ]
 
 for cog in cogs_list_rafflestore:

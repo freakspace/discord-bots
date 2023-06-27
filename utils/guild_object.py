@@ -35,10 +35,10 @@ class GuildObject:
         """
         Retrieve the balance for a given discord_user_id.
         """
-        return get_balance(
+        return Decimal(get_balance(
                 server_id=self.server_id, 
                 discord_user_id=discord_user_id
-            )
+            ))
 
     def credit(self, discord_user_id: int, amount: str, note: str):
         """
