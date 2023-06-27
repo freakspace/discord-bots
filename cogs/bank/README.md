@@ -1,6 +1,6 @@
 # Bank
 
-This Discord bot served as a bank in a Discord server with more than 10,000 members.
+This Discord bot served as a bank in a Discord server with more than 10,000 members, and has served more than 50,000 live transactions.
 It was integrated with third party API's, which allowed it to make calls to the blockchain.
 However the project is not active anymore, so I've decided to make the code public.
 With the right developer this bot can serve as a payment gateway for any blockchain.
