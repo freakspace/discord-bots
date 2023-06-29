@@ -7,10 +7,11 @@ from peewee import MySQLDatabase, SqliteDatabase
 load_dotenv()
 
 environment = os.getenv("ENVIRONMENT")
+print(f"Environment is: {environment}")
 
-db = None
+db = SqliteDatabase("database.db")
 
-if environment == "local":
+""" if environment == "local":
     use_sqlite = os.getenv("USE_SQLITE")
 
     if use_sqlite == "true":
@@ -54,4 +55,4 @@ if environment == "prod":
         password=os.getenv("PASSWORD_PROD"),
         host=os.getenv("HOST_PROD"),
         port=int(os.getenv("PORT_PROD")),
-    )
+    ) """
