@@ -14,6 +14,8 @@ transaction_table = transaction_model(1020233562454249502)
 
 
 def create_tables():
+    if not database:
+        raise Exception("The database is None")
     database.connect()
     database.create_tables(
         [Raffle, Receipt, Guild, transaction_table, Player, Lottery, LotteryNumber]
