@@ -14,10 +14,11 @@ transaction_table = transaction_model(1020233562454249502)
 
 
 def create_tables():
-    with database:
-        database.create_tables(
-            [Raffle, Receipt, Guild, transaction_table, Player, Lottery, LotteryNumber]
-        )
+    database.connect()
+    database.create_tables(
+        [Raffle, Receipt, Guild, transaction_table, Player, Lottery, LotteryNumber]
+    )
+    database.close()
 
 
 create_tables()
