@@ -1,4 +1,14 @@
-# RaffleStore
+# Discord Bots
+
+This project includes a plethora of different Discord Bots, which work together to create an immensive user experience.
+
+- The banking bot allows users to manage their balance and earn currencies.
+- The rafflestore bot makes it possible to buy raffletickets and win prizes
+- The lottery will draw 5 numbers and selects winners
+- The coinflip allows players to flip agains the house
+
+The bots has previously been live in 10+ servers with more than 50k members.
+The bots was connected with the Solana blockchain using different API calls.
 
 ## Installation
 
