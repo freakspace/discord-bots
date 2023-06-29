@@ -1,6 +1,11 @@
+import json
+from datetime import datetime
+
 from peewee import *
+from playhouse.mysql_ext import JSONField
 
 from utils.database import db as database
+
 
 class BaseModel(Model):
     class Meta:
@@ -21,13 +26,19 @@ class Raffle(BaseModel):
     price = CharField()
     duration = DateTimeField()
     stock = IntegerField(default=99999)
-    max_qty_user = IntegerField(default=1) # Determine max qty a user can buy
-    unique_winners = BooleanField() # Dertermine if the same winner can be picked more than once
+    max_qty_user = IntegerField(default=1)  # Determine max qty a user can buy
+    unique_winners = (
+        BooleanField()
+    )  # Dertermine if the same winner can be picked more than once
     sold = IntegerField()
     visible = BooleanField()
 
     def has_winner(self):
-        return Receipt.select().where((Receipt.raffle == self) & (Receipt.is_winner == True)).exists()
+        return (
+            Receipt.select()
+            .where((Receipt.raffle == self) & (Receipt.is_winner == True))
+            .exists()
+        )
 
 
 class Receipt(BaseModel):
@@ -51,7 +62,7 @@ def transaction_model(server_id: int):
 
         class Meta:
             db_table = f"token_transaction_" + str(server_id)
-    
+
     return Transaction
 
 
@@ -76,3 +87,53 @@ class Guild(BaseModel):
     raffle_message_id = CharField()
     raffle_channel_id = CharField()
     raffle_winner_channel_id = CharField()
+
+
+class Lottery(BaseModel):
+    server_id = CharField()
+    end_time = DateTimeField()
+    price = CharField()
+    prize_pool = CharField()
+    sold = IntegerField()
+    numbers_picked = JSONField(null=True)
+    prize_table = JSONField(null=True)
+    jackpot_bonus = CharField()
+
+    def get_numbers(self):
+        if self.numbers_picked != None:
+            return json.loads(self.numbers_picked)
+        else:
+            raise Exception("Numbers has not been picked")
+
+    def is_salabe(self):
+        return self.end_time < datetime.datetime.now()
+
+
+class LotteryNumber(BaseModel):
+    discord_user_id = CharField()
+    lottery_id = CharField()
+    purchase_time = DateTimeField()
+    numbers = JSONField()
+    numbers_correct = SmallIntegerField(null=True)
+    prize = CharField(null=True)
+    prize_claimed = BooleanField(default=False)
+
+    class Meta:
+        db_table = "lottery_number"
+
+    def get_numbers(self):
+        return json.loads(self.numbers)
+
+    def get_claimed(self):
+        if self.prize == "0":
+            return "❌"
+        if self.prize_claimed:
+            return "✅"
+        else:
+            return "🔳"
+
+    def get_prize(self):
+        if self.prize != None:
+            return self.prize
+        else:
+            return None
