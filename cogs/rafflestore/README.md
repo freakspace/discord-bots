@@ -1,4 +1,4 @@
-# Rafflestore
+# Discord Rafflestore Bot
 
 This Discord bot served as a RaffleStore in a Discord server with more than 10,000 members.
 It can work independetly from the bankingbot, however they go very well together.
