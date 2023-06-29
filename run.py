@@ -19,7 +19,7 @@ intents.reactions = True
 bot_rafflestore = commands.Bot(intents=intents, auto_sync_commands=True)
 
 
-cogs_list_rafflestore = ["rafflestore", "bank", "lottery"]
+cogs_list_rafflestore = ["rafflestore", "bank", "lottery", "coinflip"]
 
 for cog in cogs_list_rafflestore:
     print(f"Loading {cog}")

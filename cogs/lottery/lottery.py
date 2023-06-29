@@ -778,11 +778,11 @@ Description
             await ctx.followup.send(content="Missing permissions", ephemeral=True)
 
     @discord.slash_command()
-    async def end_lottery(self, ctx: commands.Context):
-        """End Lottery"""
+    async def pick_winner(self, ctx: commands.Context):
+        """Manually pick a winner"""
         await ctx.response.defer(ephemeral=True)
 
-        if ctx.user.id == 363377402220511248:
+        if ctx.user.id == ctx.guild.admin.id:
             await end_lottery(self.bot)
 
             await ctx.followup.send("Done", ephemeral=True)
@@ -790,7 +790,8 @@ Description
             await ctx.followup.send("Missing permission", ephemeral=True)
 
     @tasks.loop(seconds=60)
-    async def end_lottery(self):
+    async def auto_pick_winner(self):
+        """Automatically pick a winner"""
         await end_lottery(self.bot)
 
     @commands.Cog.listener()
