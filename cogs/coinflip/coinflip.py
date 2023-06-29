@@ -24,8 +24,6 @@ from cogs.bank.bank import DepositButton
 
 guild_ids = [int(guild.server_id) for guild in Guild.select()]
 
-banking_bot = int(os.getenv("BANK_BOT_ID"))
-
 
 def generate_option(symbol: str, amount: int):
     option = discord.SelectOption(
@@ -56,10 +54,10 @@ async def get_coinflip_result(
     # Pick a winner
     if choice == winning_choice:
         winner = interaction.user.id
-        loser = banking_bot
+        loser = interaction.client.user.id
         result = choice
     else:
-        winner = banking_bot
+        winner = interaction.client.user.id
         loser = interaction.user.id
         result = result_mapping[choice]
 
@@ -71,7 +69,7 @@ async def get_coinflip_result(
 
     notification_channel_id = get_notification_channel(server_id=interaction.guild.id)
 
-    if winner == banking_bot:
+    if winner == interaction.client.user.id:
         embed = discord.Embed(
             title=f"{client.get_user(loser).display_name} Lost",
             description="Sorry buddy... You lost!",
@@ -242,12 +240,12 @@ async def start_flip(
         return
 
     # Check opponent balance
-    balance_challengee = guild.balance(discord_user_id=banking_bot)
+    balance_challengee = guild.balance(discord_user_id=interaction.client.user.id)
     if amount_in_eth > balance_challengee:
         embed = discord.Embed(
             title="",
             description=f"""
-<@{banking_bot}> doesn't have {guild.to_locale(amount_in_eth)} to flip with!
+<@{interaction.client.user.id}> doesn't have {guild.to_locale(amount_in_eth)} to flip with!
             """,
             color=discord.Color.red(),
         )

@@ -49,9 +49,6 @@ utc = pytz.utc
 # TODO Add bonus without balance will still add the bonus
 
 
-banking_bot = int(os.getenv("BANK_BOT_ID"))
-
-
 def generate_list_to_string(list: list):
     return " - ".join(str(x) for x in list)
 
@@ -240,7 +237,7 @@ Hold up Degen! You don't have enough {guild.token_name}!
 
         # Credit prize pool to the bot
         guild.credit(
-            discord_user_id=banking_bot,
+            discord_user_id=interaction.client.user.id,
             amount=total_price,
             note=f"To prize pool for Lottery #{lottery.id}",
         )
@@ -359,7 +356,7 @@ class ClaimRewards(discord.ui.Button):
         )
 
         self.guild.debit(
-            discord_user_id=banking_bot,
+            discord_user_id=interaction.client.user.id,
             amount=self.total_prize,
             note=f"Rewarded {interaction.user.display_name} with rewards from lottery #{self.lottery_id}",
         )

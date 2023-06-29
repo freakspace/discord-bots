@@ -3,14 +3,15 @@ import logging
 
 from dotenv import load_dotenv
 
-from peewee import MySQLDatabase, SqliteDatabase
+from peewee import SqliteDatabase
 
-print("TESTER")
 load_dotenv()
 
 environment = os.getenv("ENVIRONMENT")
 print(f"Environment is: {environment}")
 
+if not environment:
+    raise Exception("The environment variable is not set")
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

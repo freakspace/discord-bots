@@ -9,7 +9,12 @@ from discord.commands import OptionChoice
 from peewee import DoesNotExist
 
 from utils.utils import send_notification_message, get_domain
-from utils.services import get_or_create_player, create_transaction_table, create_guild, get_transaction
+from utils.services import (
+    get_or_create_player,
+    create_transaction_table,
+    create_guild,
+    get_transaction,
+)
 from utils.api_service import get_user_deposit_address, confirm_deposit, make_withdraw
 from utils.models import (
     Player,
@@ -20,8 +25,6 @@ from utils.guild_object import GuildObject
 from utils.utils import *
 
 environment = os.getenv("ENVIRONMENT")
-
-banking_bot = int(os.getenv("BANK_BOT_ID"))
 
 guild_ids = [int(guild.server_id) for guild in Guild.select()]
 
@@ -41,7 +44,9 @@ def check_password(raw_password: str, encrypted_password: str):
 
 
 async def open_account(interaction: discord.Interaction, guild: GuildObject):
-    player = get_or_create_player(discord_user_id=interaction.user.id) # TODO Add this method
+    player = get_or_create_player(
+        discord_user_id=interaction.user.id
+    )  # TODO Add this method
 
     guild_access_role = get_access_role(server_id=interaction.guild.id)
 
@@ -52,13 +57,19 @@ async def open_account(interaction: discord.Interaction, guild: GuildObject):
             embed = discord.Embed(
                 title="",
                 description=f"You got to have the {access_role} role to do that...",
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
     if player.bank_pin:
-        await interaction.response.send_modal(CheckPinModal(title="Enter Your Pincode", encrypted_password=player.bank_pin, guild=guild))
+        await interaction.response.send_modal(
+            CheckPinModal(
+                title="Enter Your Pincode",
+                encrypted_password=player.bank_pin,
+                guild=guild,
+            )
+        )
     else:
         view = discord.ui.View()
         view.add_item(item=CreatePinButton(guild=guild, player=player))
@@ -72,7 +83,7 @@ Click the button below to set up your secure pin code first.
 
 ⚠️ Note: Make sure you **REMEMBER** the pin
                     """,
-            color=discord.Color.yellow()
+            color=discord.Color.yellow(),
         )
 
         await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -83,8 +94,11 @@ class CheckPinModal(discord.ui.Modal):
         self.guild = guild
         self.encrypted_password = encrypted_password
         super().__init__(*args, **kwargs)
-        self.add_item(discord.ui.InputText(label="Pincode",
-                      placeholder="Enter Your Pincode To View Your Account"))
+        self.add_item(
+            discord.ui.InputText(
+                label="Pincode", placeholder="Enter Your Pincode To View Your Account"
+            )
+        )
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -96,26 +110,29 @@ class CheckPinModal(discord.ui.Modal):
             embed = discord.Embed(
                 title=f"💳 {interaction.user.display_name}'s {self.guild.token_name} Account",
                 description="",
-                color=discord.Color.green()
+                color=discord.Color.green(),
             )
 
-            embed.add_field(name=f":moneybag: {self.guild.token_name} Balance",
-                            value=f"`{self.guild.to_locale(self.guild.balance(discord_user_id=interaction.user.id))}`")
+            embed.add_field(
+                name=f":moneybag: {self.guild.token_name} Balance",
+                value=f"`{self.guild.to_locale(self.guild.balance(discord_user_id=interaction.user.id))}`",
+            )
             embed.set_thumbnail(url=interaction.user.display_avatar)
 
             # Get token
-            await interaction.followup.send(embed=embed, view=UserBankingViewToken(), ephemeral=True)
+            await interaction.followup.send(
+                embed=embed, view=UserBankingViewToken(), ephemeral=True
+            )
 
         else:
             embed = discord.Embed(
                 title=":x: Access Denied",
                 description="You entered the wrong Pincode.",
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
 
             view = discord.ui.View()
-            view.add_item(item=ViewAccountButton(
-                label="Try Again"))
+            view.add_item(item=ViewAccountButton(label="Try Again"))
             view.add_item(item=ForgotPinButton())
 
             await interaction.followup.send(embed=embed, view=view, ephemeral=True)
@@ -125,8 +142,12 @@ class CreatePinModal(discord.ui.Modal):
     def __init__(self, guild: GuildObject, *args, **kwargs):
         self.guild = guild
         super().__init__(*args, **kwargs)
-        self.add_item(discord.ui.InputText(label="Create Pincode",
-                      placeholder="Enter a Secure Pincode You Will Remember"))
+        self.add_item(
+            discord.ui.InputText(
+                label="Create Pincode",
+                placeholder="Enter a Secure Pincode You Will Remember",
+            )
+        )
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -138,15 +159,15 @@ class CreatePinModal(discord.ui.Modal):
         view = discord.ui.View()
 
         try:
-            update_pincode = (Player
-                              .update(bank_pin=hashed_pincode)
-                              .where(Player.discord_user_id == interaction.user.id))
+            update_pincode = Player.update(bank_pin=hashed_pincode).where(
+                Player.discord_user_id == interaction.user.id
+            )
             update_pincode.execute()
         except:
             embed = discord.Embed(
                 title=":octagonal_sign: Error",
                 description="We couldm't set a pincode.Try again.",
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
             await interaction.followup.send(embed=embed, view=view, ephemeral=True)
             return
@@ -159,17 +180,21 @@ Please make sure you **remember ** your pincode, you will need it to **view** yo
 
 View your account now by clicking the **button** below, and entering your **new pincode**.
                     """,
-            color=discord.Color.green()
+            color=discord.Color.green(),
         )
 
-        url = interaction.client.get_user(banking_bot).display_avatar
+        url = interaction.client.user.display_avatar
         embed.set_thumbnail(url=url)
-        view.add_item(item=ViewAccountButton(
-            label=f"View {self.guild.token_name} Account", guild=self.guild))
+        view.add_item(
+            item=ViewAccountButton(
+                label=f"View {self.guild.token_name} Account", guild=self.guild
+            )
+        )
 
         # Get or generate address
         get_user_deposit_address(
-            server_id=interaction.guild.id, discord_user_id=interaction.user.id)
+            server_id=interaction.guild.id, discord_user_id=interaction.user.id
+        )
 
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
@@ -179,10 +204,17 @@ class WithdrawModal(discord.ui.Modal):
         self.balance = balance
         self.guild = guild
         super().__init__(*args, **kwargs)
-        self.add_item(discord.ui.InputText(label=f"Balance: {self.guild.to_locale(self.balance)})"[
-                      0:45], placeholder=f"Enter Amount To Withdraw"))
-        self.add_item(discord.ui.InputText(label=f"Address",
-                      placeholder=f"Enter Receipient Address"))
+        self.add_item(
+            discord.ui.InputText(
+                label=f"Balance: {self.guild.to_locale(self.balance)})"[0:45],
+                placeholder=f"Enter Amount To Withdraw",
+            )
+        )
+        self.add_item(
+            discord.ui.InputText(
+                label=f"Address", placeholder=f"Enter Receipient Address"
+            )
+        )
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -199,7 +231,7 @@ Woh Bud, that doesn't look right.
 Enter the amount you want to withdraw again.
 Properly this time jeez...
                             """,
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
@@ -212,7 +244,7 @@ Woh Bud, that doesn't look right.
 Enter the amount you want to withdraw again.
 Properly this time jeez...
                             """,
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
         elif amount_in_wei > self.balance:
@@ -222,7 +254,7 @@ Properly this time jeez...
 Withdrawal amount: {amount}
 Balance: {self.guild.to_locale(self.balance)}
                             """,
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
         else:
@@ -233,22 +265,26 @@ Balance: {self.guild.to_locale(self.balance)}
 
 **__Recipient Wallet:__** {self.children[1].value}
                     """,
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
 
-            url = interaction.client.get_user(banking_bot).display_avatar
+            url = interaction.client.user.display_avatar
 
             embed.set_thumbnail(url=url)
             view = discord.ui.View()
 
-            view.add_item(ConfirmWithdrawal(
-                amount=amount,
-                message_id=interaction.message.id,
-                deposit_address=get_user_deposit_address(
-                    server_id=interaction.guild.id, discord_user_id=interaction.user.id),
-                guild=self.guild,
-                withdrawal_address=self.children[1].value
-            ))
+            view.add_item(
+                ConfirmWithdrawal(
+                    amount=amount,
+                    message_id=interaction.message.id,
+                    deposit_address=get_user_deposit_address(
+                        server_id=interaction.guild.id,
+                        discord_user_id=interaction.user.id,
+                    ),
+                    guild=self.guild,
+                    withdrawal_address=self.children[1].value,
+                )
+            )
             await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
 
@@ -259,7 +295,7 @@ class ConfirmWithdrawal(discord.ui.Button):
         message_id: int,
         deposit_address: str,
         guild: GuildObject,
-        withdrawal_address: str
+        withdrawal_address: str,
     ):
         self.amount = amount
         self.message_id = message_id
@@ -287,15 +323,23 @@ class ConfirmWithdrawal(discord.ui.Button):
 Withdrawal amount: {self.amount}
 Balance: {self.guild.to_locale(balance)}
                             """,
-                color=discord.Color.red()
+                color=discord.Color.red(),
             )
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
         else:
             view = discord.ui.View()
-            view.add_item(discord.ui.Button(label="Confirming On-Chain",
-                          emoji="⏳", style=discord.ButtonStyle.grey, disabled=True))
-            await interaction.followup.edit_message(message_id=interaction.message.id, view=view)
+            view.add_item(
+                discord.ui.Button(
+                    label="Confirming On-Chain",
+                    emoji="⏳",
+                    style=discord.ButtonStyle.grey,
+                    disabled=True,
+                )
+            )
+            await interaction.followup.edit_message(
+                message_id=interaction.message.id, view=view
+            )
 
             try:
                 # Call blockhain here
@@ -303,11 +347,10 @@ Balance: {self.guild.to_locale(balance)}
                     server_id=interaction.guild.id,
                     discord_user_id=interaction.user.id,
                     amount=amount_in_wei,
-                    address=self.withdrawal_address
+                    address=self.withdrawal_address,
                 )
-             # Check for errors
+            # Check for errors
             except Exception as error:
-
                 view = discord.ui.View()
 
                 if error == "failedTransactionId":
@@ -318,13 +361,18 @@ There was an error with the database connection...
 Must be those damn rats again, chewing on the wires.
 Count to 1, then click Try Again... I'll get the rat poison.
                                 """,
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
                     )
 
-                    embed.set_thumbnail(
-                        url="https://s6.gifyu.com/images/banker.png")
-                    view.add_item(discord.ui.Button(
-                        label="Error", emoji="❌", style=discord.ButtonStyle.red, disabled=True))
+                    embed.set_thumbnail(url="https://s6.gifyu.com/images/banker.png")
+                    view.add_item(
+                        discord.ui.Button(
+                            label="Error",
+                            emoji="❌",
+                            style=discord.ButtonStyle.red,
+                            disabled=True,
+                        )
+                    )
                 elif error == "problem with database connection":
                     embed = discord.Embed(
                         title="⚠️ BLOCKCHAIN ERROR",
@@ -333,12 +381,17 @@ There was a snafu on the Solana Blockchain...
 Either you can write a strongly worded letter to the Solana devs,
 Or just wait a sec, then click Try Again... Up to you.
                                 """,
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
                     )
-                    embed.set_thumbnail(
-                        url="https://s6.gifyu.com/images/banker.png")
-                    view.add_item(discord.ui.Button(
-                        label="Error", emoji="❌", style=discord.ButtonStyle.red, disabled=True))
+                    embed.set_thumbnail(url="https://s6.gifyu.com/images/banker.png")
+                    view.add_item(
+                        discord.ui.Button(
+                            label="Error",
+                            emoji="❌",
+                            style=discord.ButtonStyle.red,
+                            disabled=True,
+                        )
+                    )
                 elif error == "only positive numbers allowed":
                     embed = discord.Embed(
                         title="⚠️ STRING ERROR",
@@ -347,13 +400,18 @@ Woh Bud, that doesn't look right.
 Enter the amount you want to withdraw again.
 Properly this time jeez...
                                 """,
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
                     )
 
-                    embed.set_thumbnail(
-                        url="https://s6.gifyu.com/images/banker.png")
-                    view.add_item(discord.ui.Button(
-                        label="Error", emoji="❌", style=discord.ButtonStyle.red, disabled=True))
+                    embed.set_thumbnail(url="https://s6.gifyu.com/images/banker.png")
+                    view.add_item(
+                        discord.ui.Button(
+                            label="Error",
+                            emoji="❌",
+                            style=discord.ButtonStyle.red,
+                            disabled=True,
+                        )
+                    )
                 elif error == "must withdrawal more than 0":
                     embed = discord.Embed(
                         title="⚠️ ZERO ERROR",
@@ -362,13 +420,18 @@ You can't withdraw less than zero!
 Do you even know how to math? Sally has zero apples,
 She gives 1 away, how many apples does she have?
                                 """,
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
                     )
 
-                    embed.set_thumbnail(
-                        url="https://s6.gifyu.com/images/banker.png")
-                    view.add_item(discord.ui.Button(
-                        label="Error", emoji="❌", style=discord.ButtonStyle.red, disabled=True))
+                    embed.set_thumbnail(url="https://s6.gifyu.com/images/banker.png")
+                    view.add_item(
+                        discord.ui.Button(
+                            label="Error",
+                            emoji="❌",
+                            style=discord.ButtonStyle.red,
+                            disabled=True,
+                        )
+                    )
                 elif error == "current transaction pending. wait for it to finish":
                     embed = discord.Embed(
                         title="⚠️ PREMATURE ERROR",
@@ -377,13 +440,18 @@ Woh Bud, that doesn't look right.
 Enter the amount you want to withdraw again.
 Properly this time jeez...
                                 """,
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
                     )
 
-                    embed.set_thumbnail(
-                        url="https://s6.gifyu.com/images/banker.png")
-                    view.add_item(discord.ui.Button(
-                        label="Error", emoji="❌", style=discord.ButtonStyle.red, disabled=True))
+                    embed.set_thumbnail(url="https://s6.gifyu.com/images/banker.png")
+                    view.add_item(
+                        discord.ui.Button(
+                            label="Error",
+                            emoji="❌",
+                            style=discord.ButtonStyle.red,
+                            disabled=True,
+                        )
+                    )
                 elif error == "not enough balance":
                     embed = discord.Embed(
                         title="⚠️ BROKIE ERROR",
@@ -392,49 +460,72 @@ Woh Bud, that doesn't look right.
 Enter the amount you want to withdraw again.
 Properly this time jeez...
                                 """,
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
                     )
 
-                    embed.set_thumbnail(
-                        url="https://s6.gifyu.com/images/banker.png")
+                    embed.set_thumbnail(url="https://s6.gifyu.com/images/banker.png")
                 else:
                     embed = discord.Embed(
                         title=":octagonal_sign: Error",
                         description=error,
-                        color=discord.Color.red()
+                        color=discord.Color.red(),
                     )
-                    view.add_item(discord.ui.Button(
-                        label="Error", emoji="❌", style=discord.ButtonStyle.red, disabled=True))
+                    view.add_item(
+                        discord.ui.Button(
+                            label="Error",
+                            emoji="❌",
+                            style=discord.ButtonStyle.red,
+                            disabled=True,
+                        )
+                    )
 
                 # Respond and stop
                 await interaction.followup.send(embed=embed, ephemeral=True)
-                await interaction.followup.edit_message(message_id=interaction.message.id, view=view)
+                await interaction.followup.edit_message(
+                    message_id=interaction.message.id, view=view
+                )
                 return
             try:
                 # Get transaction from table
-                transaction = get_transaction(server_id=interaction.guild.id, tx_id=tx_id)
+                transaction = get_transaction(
+                    server_id=interaction.guild.id, tx_id=tx_id
+                )
             except DoesNotExist:
                 embed = discord.Embed(
                     title=":octagonal_sign: Error",
                     description="We couldn't find the transaction!",
-                    color=discord.Color.red()
+                    color=discord.Color.red(),
                 )
 
                 # Respond and stop
                 view = discord.ui.View()
-                view.add_item(discord.ui.Button(
-                    label="Error", emoji="❌", style=discord.ButtonStyle.red, disabled=True))
-                await interaction.followup.edit_message(message_id=interaction.message.id, view=view)
+                view.add_item(
+                    discord.ui.Button(
+                        label="Error",
+                        emoji="❌",
+                        style=discord.ButtonStyle.red,
+                        disabled=True,
+                    )
+                )
+                await interaction.followup.edit_message(
+                    message_id=interaction.message.id, view=view
+                )
                 return
 
             # Return information to the user
             if transaction:
-
                 # Edit original message
                 view = discord.ui.View()
-                view.add_item(discord.ui.Button(
-                    label="Confirmed On-Chain", style=discord.ButtonStyle.gray, disabled=True))
-                await interaction.followup.edit_message(message_id=interaction.message.id, view=view)
+                view.add_item(
+                    discord.ui.Button(
+                        label="Confirmed On-Chain",
+                        style=discord.ButtonStyle.gray,
+                        disabled=True,
+                    )
+                )
+                await interaction.followup.edit_message(
+                    message_id=interaction.message.id, view=view
+                )
 
                 # Respond to user with embed
                 embed = discord.Embed(
@@ -444,38 +535,45 @@ Properly this time jeez...
 :moneybag: New Balance: `{self.guild.to_locale(self.guild.balance(discord_user_id = interaction.user.id))}`
 Transaction: https://solscan.io/tx/{transaction.note}
 """,
-                    color=discord.Color.green()
+                    color=discord.Color.green(),
                 )
 
-
-                url = interaction.client.get_user(
-                        banking_bot).display_avatar
+                url = interaction.client.user.display_avatar
 
                 embed.set_thumbnail(url=url)
 
                 notification_channel_id = get_notification_channel(
-                    server_id=interaction.guild.id)
+                    server_id=interaction.guild.id
+                )
                 if notification_channel_id:
                     # Hall of privacy
                     hall_message = f"<@{interaction.user.id}> successfully **WITHDREW {self.guild.to_locale(transaction.debit)}** on-chain ⬆️"
-                    await send_notification_message(bot_or_client=interaction.client, message=hall_message, channel_id=notification_channel_id)
+                    await send_notification_message(
+                        bot_or_client=interaction.client,
+                        message=hall_message,
+                        channel_id=notification_channel_id,
+                    )
 
                 await interaction.followup.send(embed=embed, ephemeral=True)
-            
+
             else:
                 embed = discord.Embed(
-                        title=f":x: We can't confirm the withdrawal.",
-                        description=f"""
+                    title=f":x: We can't confirm the withdrawal.",
+                    description=f"""
 This is just a demo, we've debited your account. 
 Click **'View Account'** to see your updated balance
                             """,
-                        color=discord.Color.yellow()
-                    )
-                
+                    color=discord.Color.yellow(),
+                )
+
                 self.guild.debit(
-                    discord_user_id=interaction.user.id, amount=amount_in_wei, note="Demo Transaction")
-                
+                    discord_user_id=interaction.user.id,
+                    amount=amount_in_wei,
+                    note="Demo Transaction",
+                )
+
                 await interaction.followup.send(embed=embed, ephemeral=True)
+
 
 # TODO Edit user banking view
 
@@ -487,7 +585,7 @@ class VerifyDepositButton(discord.ui.Button):
         message_id: int,
         deposit_address: str,
         guild: GuildObject,
-        call_to_action: discord.ui.View = None
+        call_to_action: discord.ui.View = None,
     ):
         self.new_label = new_label
         self.message_id = message_id
@@ -505,17 +603,25 @@ class VerifyDepositButton(discord.ui.Button):
         transaction = None
 
         view = discord.ui.View()
-        view.add_item(discord.ui.Button(label="Confirming On-Chain",
-                      emoji="⏳", style=discord.ButtonStyle.grey, disabled=True))
-        await interaction.followup.edit_message(message_id=interaction.message.id, view=view)
+        view.add_item(
+            discord.ui.Button(
+                label="Confirming On-Chain",
+                emoji="⏳",
+                style=discord.ButtonStyle.grey,
+                disabled=True,
+            )
+        )
+        await interaction.followup.edit_message(
+            message_id=interaction.message.id, view=view
+        )
 
         # Call api
         try:
-            tx_id = confirm_deposit(server_id=interaction.guild.id,
-                discord_user_id=interaction.user.id)
+            tx_id = confirm_deposit(
+                server_id=interaction.guild.id, discord_user_id=interaction.user.id
+            )
         # Handle errors
         except Exception as error:
-
             view = discord.ui.View()
 
             if error == "0 sol deposited" or error == "transaction pending":
@@ -527,10 +633,15 @@ Woh hold your horses... 🐎
 Please be patient as it can take up to a **few minutes** to confirm on the blockchain.
 **Count to 10** 'Mississippily' first then try again.
                             """,
-                    color=discord.Color.red()
+                    color=discord.Color.red(),
                 )
-                view.add_item(discord.ui.Button(
-                    label="Unconfirmed", style=discord.ButtonStyle.grey, disabled=True))
+                view.add_item(
+                    discord.ui.Button(
+                        label="Unconfirmed",
+                        style=discord.ButtonStyle.grey,
+                        disabled=True,
+                    )
+                )
                 # Give user option to re-verify
                 view_verify_deposit = discord.ui.View()
                 view_verify_deposit.add_item(
@@ -538,66 +649,90 @@ Please be patient as it can take up to a **few minutes** to confirm on the block
                         new_label="Re-check On-Chain",
                         message_id=self.message_id,
                         deposit_address=self.deposit_address,
-                        guild=self.guild
+                        guild=self.guild,
                     )
                 )
-                await interaction.followup.send(embed=embed, view=view_verify_deposit, ephemeral=True)
+                await interaction.followup.send(
+                    embed=embed, view=view_verify_deposit, ephemeral=True
+                )
             elif error == "deposit wallet not found":
                 embed = discord.Embed(
                     title="There has been an error",
                     description=error,
-                    color=discord.Color.red()
+                    color=discord.Color.red(),
                 )
-                view.add_item(discord.ui.Button(
-                    label="Unconfirmed", style=discord.ButtonStyle.grey, disabled=True))
+                view.add_item(
+                    discord.ui.Button(
+                        label="Unconfirmed",
+                        style=discord.ButtonStyle.grey,
+                        disabled=True,
+                    )
+                )
             elif error == "deposit wallet not found":
                 embed = discord.Embed(
                     title="There has been an error",
                     description=error,
-                    color=discord.Color.red()
+                    color=discord.Color.red(),
                 )
-                view.add_item(discord.ui.Button(
-                    label="Unconfirmed", style=discord.ButtonStyle.grey, disabled=True))
+                view.add_item(
+                    discord.ui.Button(
+                        label="Unconfirmed",
+                        style=discord.ButtonStyle.grey,
+                        disabled=True,
+                    )
+                )
             else:
                 embed = discord.Embed(
-                    title=error,
-                    description=f"",
-                    color=discord.Color.red()
+                    title=error, description=f"", color=discord.Color.red()
                 )
-                view.add_item(discord.ui.Button(
-                    label="Unconfirmed", style=discord.ButtonStyle.grey, disabled=True))
+                view.add_item(
+                    discord.ui.Button(
+                        label="Unconfirmed",
+                        style=discord.ButtonStyle.grey,
+                        disabled=True,
+                    )
+                )
 
             # Update the confirming on-chain button
-            await interaction.followup.edit_message(message_id=interaction.message.id, view=view)
+            await interaction.followup.edit_message(
+                message_id=interaction.message.id, view=view
+            )
             await interaction.followup.send(embed=embed, ephemeral=True)
 
         # Get transaction from database
         if tx_id:
             try:
-                transaction = get_transaction(server_id=interaction.guild.id, tx_id=tx_id)
+                transaction = get_transaction(
+                    server_id=interaction.guild.id, tx_id=tx_id
+                )
             except Exception as error:
                 embed = discord.Embed(
                     title=f"There has been an unknown error",
                     description=error,
-                    color=discord.Color.red()
+                    color=discord.Color.red(),
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
 
         # Respond to user
         if transaction:
-
-           # Check for success
+            # Check for success
             if transaction.status == "success":
                 # Edit original message
                 view = discord.ui.View()
-                view.add_item(discord.ui.Button(
-                    label="Confirmed on-chain", style=discord.ButtonStyle.grey, disabled=True))
+                view.add_item(
+                    discord.ui.Button(
+                        label="Confirmed on-chain",
+                        style=discord.ButtonStyle.grey,
+                        disabled=True,
+                    )
+                )
 
                 # Edit confirming-button
-                await interaction.followup.edit_message(message_id=interaction.message.id, view=view)
+                await interaction.followup.edit_message(
+                    message_id=interaction.message.id, view=view
+                )
 
-                url = interaction.client.get_user(
-                        banking_bot).display_avatar
+                url = interaction.client.user.display_avatar
 
                 # Send deposit successful Embed
                 embed_deposit = discord.Embed(
@@ -607,21 +742,28 @@ Please be patient as it can take up to a **few minutes** to confirm on the block
 :moneybag: New Balance: `{self.guild.to_locale(transaction.new_balance)}`
 Transaction: https://solscan.io/tx/{transaction.note}
                     """,
-                    color=discord.Color.green()
+                    color=discord.Color.green(),
                 )
                 embed_deposit.set_thumbnail(url=url)
 
                 notification_channel_id = get_notification_channel(
-                    server_id=interaction.guild.id)
+                    server_id=interaction.guild.id
+                )
 
                 if notification_channel_id:
                     # Hall of privacy
                     hall_message = f"<@{interaction.user.id}> successfully **DEPOSITED {self.guild.to_locale(transaction.credit)}** on-chain ⬇️"
-                    await send_notification_message(bot_or_client=interaction.client, message=hall_message, channel_id=notification_channel_id)
+                    await send_notification_message(
+                        bot_or_client=interaction.client,
+                        message=hall_message,
+                        channel_id=notification_channel_id,
+                    )
 
                 if self.call_to_action:
                     # Final Respond
-                    await interaction.followup.send(embed=embed_deposit, view=self.call_to_action, ephemeral=True)
+                    await interaction.followup.send(
+                        embed=embed_deposit, view=self.call_to_action, ephemeral=True
+                    )
                 else:
                     await interaction.followup.send(embed=embed_deposit, ephemeral=True)
             else:
@@ -630,33 +772,41 @@ Transaction: https://solscan.io/tx/{transaction.note}
                     description=f"""
     We can't confirm the deposit at this moment. Try again soon.
                         """,
-                    color=discord.Color.yellow()
+                    color=discord.Color.yellow(),
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
         else:
             embed = discord.Embed(
-                    title=f":x: We can't confirm the deposit.",
-                    description=f"""
+                title=f":x: We can't confirm the deposit.",
+                description=f"""
     However, since this is just a demo, we've granted you some spare change. 
     Click **'View Account'** to see your updated balance
                         """,
-                    color=discord.Color.yellow()
-                )
-            
+                color=discord.Color.yellow(),
+            )
+
             self.guild.credit(
-                discord_user_id=interaction.user.id, amount="1000000000000000000", note="Demo Transaction")
-            
+                discord_user_id=interaction.user.id,
+                amount="1000000000000000000",
+                note="Demo Transaction",
+            )
+
             await interaction.followup.send(embed=embed, ephemeral=True)
 
 
-async def deposit(guild: GuildObject, interaction: discord.Interaction, call_to_action: discord.ui.View = None):
+async def deposit(
+    guild: GuildObject,
+    interaction: discord.Interaction,
+    call_to_action: discord.ui.View = None,
+):
     await interaction.response.defer(ephemeral=False)
 
-    url = interaction.client.get_user(banking_bot).display_avatar
+    url = interaction.client.user.display_avatar
     bank_deposit_headline = "Make a Deposit"
 
     address = get_user_deposit_address(
-        server_id=interaction.guild.id, discord_user_id=interaction.user.id)
+        server_id=interaction.guild.id, discord_user_id=interaction.user.id
+    )
 
     if address:
         view = discord.ui.View()
@@ -666,7 +816,7 @@ async def deposit(guild: GuildObject, interaction: discord.Interaction, call_to_
                 message_id=interaction.message.id,
                 deposit_address=address,
                 guild=guild,
-                call_to_action=call_to_action
+                call_to_action=call_to_action,
             )
         )
         embed = discord.Embed(
@@ -679,46 +829,72 @@ Yes, give us your money…
 3️⃣  **After** you've sent the funds, click **Confirm Deposit**.
 
 The transaction will confirm on-chain after a few seconds...
-"""
+""",
         )
         embed.set_thumbnail(url=url)
         message = f"{address}"
         await interaction.followup.send(content=message, ephemeral=True)
         await interaction.followup.send(embed=embed, view=view, ephemeral=True)
     else:
-        await interaction.followup.send("There was an error. Try again.", ephemeral=True)
+        await interaction.followup.send(
+            "There was an error. Try again.", ephemeral=True
+        )
 
 
 class UserBankingViewToken(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label=f"Deposit", emoji="⬇️", style=discord.ButtonStyle.green, custom_id=f"persistent_view:deposit_token")
-    async def deposit_token(self, button: discord.ui.Button, interaction: discord.Interaction):
-
+    @discord.ui.button(
+        label=f"Deposit",
+        emoji="⬇️",
+        style=discord.ButtonStyle.green,
+        custom_id=f"persistent_view:deposit_token",
+    )
+    async def deposit_token(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
         guild = GuildObject(server_id=interaction.guild.id)
         await deposit(interaction=interaction, guild=guild)
 
-    @discord.ui.button(label=f"Withdraw", emoji="⬆️", style=discord.ButtonStyle.danger, custom_id="persistent_view:withdraw_token")
-    async def withdraw_token(self, button: discord.ui.Button, interaction: discord.Interaction):
-
+    @discord.ui.button(
+        label=f"Withdraw",
+        emoji="⬆️",
+        style=discord.ButtonStyle.danger,
+        custom_id="persistent_view:withdraw_token",
+    )
+    async def withdraw_token(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
         guild = GuildObject(server_id=interaction.guild.id)
 
         balance = guild.balance(discord_user_id=interaction.user.id)
 
         if balance:
-            await interaction.response.send_modal(WithdrawModal(title=f"Withdraw", balance=balance, guild=guild))
+            await interaction.response.send_modal(
+                WithdrawModal(title=f"Withdraw", balance=balance, guild=guild)
+            )
         else:
-            await interaction.response.send_message(f"You don't have enough `{guild.token_name}`", ephemeral=True)
+            await interaction.response.send_message(
+                f"You don't have enough `{guild.token_name}`", ephemeral=True
+            )
 
-    @discord.ui.button(label=f"Transaction History", emoji="📒", style=discord.ButtonStyle.primary, custom_id="persistent_view:history_token")
-    async def history(self, button: discord.ui.Button, interaction: discord.Interaction):
+    @discord.ui.button(
+        label=f"Transaction History",
+        emoji="📒",
+        style=discord.ButtonStyle.primary,
+        custom_id="persistent_view:history_token",
+    )
+    async def history(
+        self, button: discord.ui.Button, interaction: discord.Interaction
+    ):
         await interaction.response.defer(ephemeral=False)
 
         guild = GuildObject(server_id=interaction.guild.id)
 
         transactions = guild.get_transactions(
-            discord_user_id=interaction.user.id, max=10)
+            discord_user_id=interaction.user.id, max=10
+        )
 
         dates = []
         changes = []
@@ -729,11 +905,9 @@ class UserBankingViewToken(discord.ui.View):
                 dates.append(str(tx.date).split(" ")[0])
 
                 if tx.credit != "0":
-                    changes.append(
-                        f"+ {guild.to_locale(tx.credit)}")
+                    changes.append(f"+ {guild.to_locale(tx.credit)}")
                 elif tx.debit != "0":
-                    changes.append(
-                        f"- {guild.to_locale(tx.debit)}")
+                    changes.append(f"- {guild.to_locale(tx.debit)}")
 
                 balance.append(guild.to_locale(tx.new_balance))
 
@@ -742,24 +916,23 @@ class UserBankingViewToken(discord.ui.View):
             balance_value = "\n".join(balance)
 
             embed = discord.Embed(
-                title=f"Your Transaction History",
-                color=discord.Color.blurple()
+                title=f"Your Transaction History", color=discord.Color.blurple()
             )
 
             view = discord.ui.View()
 
-            view.add_item(item=discord.ui.Button(
-                style=discord.ButtonStyle.link,
-                url=f"{get_domain()}/{interaction.guild.id}/{interaction.user.id}/token-transactions",
-                label="See Complete Transaction History"
-            )
+            view.add_item(
+                item=discord.ui.Button(
+                    style=discord.ButtonStyle.link,
+                    url=f"{get_domain()}/{interaction.guild.id}/{interaction.user.id}/token-transactions",
+                    label="See Complete Transaction History",
+                )
             )
 
             embed.add_field(name="Date", value=dates_value, inline=True)
             embed.add_field(name="Change", value=changes_value, inline=True)
             embed.add_field(name="Balance", value=balance_value, inline=True)
-            embed.set_image(
-                url="https://s4.gifyu.com/images/transparent_line.png")
+            embed.set_image(url="https://s4.gifyu.com/images/transparent_line.png")
 
             await interaction.followup.send(embed=embed, view=view, ephemeral=True)
         else:
@@ -774,14 +947,13 @@ class ForgotPinButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
-
         embed = discord.Embed(
             title="🆘 Forgot Pincode",
             description=f"""
 Open a support ticket here <#{get_support_channel(server_id=interaction.guild.id)}>
 An Admin will get back to you ASAP
                         """,
-            color=discord.Color.red()
+            color=discord.Color.red(),
         )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -797,20 +969,26 @@ class CreatePinButton(discord.ui.Button):
         )
 
     async def callback(self, interaction: discord.Interaction):
-
         if self.player.bank_pin:
-
             view = discord.ui.View()
             view.add_item(item=ForgotPinButton())
 
-            await interaction.response.send_message(content="You've already set up a pincode.", view=view, ephemeral=True)
+            await interaction.response.send_message(
+                content="You've already set up a pincode.", view=view, ephemeral=True
+            )
         else:
-
             view = discord.ui.View()
-            view.add_item(item=discord.ui.Button(
-                label="Set-Up A Pincode", style=discord.ButtonStyle.grey, disabled=True))
+            view.add_item(
+                item=discord.ui.Button(
+                    label="Set-Up A Pincode",
+                    style=discord.ButtonStyle.grey,
+                    disabled=True,
+                )
+            )
 
-            await interaction.response.send_modal(CreatePinModal(title="Set Up Your Unique Pincode:", guild=self.guild))
+            await interaction.response.send_modal(
+                CreatePinModal(title="Set Up Your Unique Pincode:", guild=self.guild)
+            )
 
 
 class DepositButton(discord.ui.Button):
@@ -820,11 +998,15 @@ class DepositButton(discord.ui.Button):
         super().__init__(
             label=f"Deposit {self.token.value} Now",
             style=discord.ButtonStyle.primary,
-            emoji="🪙"
+            emoji="🪙",
         )
 
     async def callback(self, interaction: discord.Interaction):
-        await deposit(interaction=interaction, guild=self.guild, call_to_action=self.call_to_action)
+        await deposit(
+            interaction=interaction,
+            guild=self.guild,
+            call_to_action=self.call_to_action,
+        )
 
 
 class ViewTokenAccountButton(discord.ui.Button):
@@ -833,7 +1015,7 @@ class ViewTokenAccountButton(discord.ui.Button):
             label=f"View Account",
             style=discord.ButtonStyle.primary,
             custom_id="persistent_view:view_token_account",
-            emoji="🪙"
+            emoji="🪙",
         )
 
     async def callback(self, interaction: discord.Interaction):
@@ -842,18 +1024,19 @@ class ViewTokenAccountButton(discord.ui.Button):
 
 
 class ViewAccountButton(discord.ui.Button):
-    def __init__(self, label: str, guild: GuildObject, color: discord.ButtonStyle = discord.ButtonStyle.danger):
+    def __init__(
+        self,
+        label: str,
+        guild: GuildObject,
+        color: discord.ButtonStyle = discord.ButtonStyle.danger,
+    ):
         self.guild = guild
-        super().__init__(
-            label=label,
-            style=color
-        )
+        super().__init__(label=label, style=color)
 
     async def callback(self, interaction: discord.Interaction):
-
         player = get_or_create_player(discord_user_id=interaction.user.id)
 
-        url = interaction.client.get_user(banking_bot).display_avatar
+        url = interaction.client.user.display_avatar
 
         try:
             # Check if user has a pin
@@ -862,7 +1045,7 @@ class ViewAccountButton(discord.ui.Button):
                     CheckPinModal(
                         title="Enter Your Secure Pincode:",
                         encrypted_password=player.bank_pin,
-                        guild=self.guild
+                        guild=self.guild,
                     )
                 )
             else:
@@ -877,15 +1060,21 @@ You’ll need to **Set-Up A Pincode** here at the bank.
 
 Click the button below to set up your secure pin code first.
                             """,
-                    color=discord.Color.yellow()
+                    color=discord.Color.yellow(),
                 )
                 embed.set_thumbnail(url=url)
 
-                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+                await interaction.response.send_message(
+                    embed=embed, view=view, ephemeral=True
+                )
         except KeyError:
-            await interaction.response.send_message(f"We couldn't connect to the server.. Try again.", ephemeral=True)
+            await interaction.response.send_message(
+                f"We couldn't connect to the server.. Try again.", ephemeral=True
+            )
         except Exception as e:
-            await interaction.response.send_message(f"Unexpected error: {e}", ephemeral=True)
+            await interaction.response.send_message(
+                f"Unexpected error: {e}", ephemeral=True
+            )
 
 
 class BankingView(discord.ui.View):
@@ -900,7 +1089,7 @@ bool_choices = [
 
 
 class BankingBot(commands.Cog):
-    """ Admin command to initialize the banking embed"""
+    """Admin command to initialize the banking embed"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -911,7 +1100,7 @@ class BankingBot(commands.Cog):
     async def prepare_bank(
         self,
         ctx: commands.Context,
-        message_id: discord.Option(str, "Update existing embed", default=None)
+        message_id: discord.Option(str, "Update existing embed", default=None),
     ):
         """Starts or Updates the Banking Embed"""
 
@@ -929,14 +1118,11 @@ class BankingBot(commands.Cog):
             admin_role = None
 
         if admin_role in roles:
-            
             # TODO Add this method
             create_transaction_table(server_id=ctx.guild.id)
 
             embed = discord.Embed(
-                title="",
-                description=bank_description,
-                color=discord.Color.red()
+                title="", description=bank_description, color=discord.Color.red()
             )
 
             embed.set_image(url=url)
@@ -955,28 +1141,25 @@ class BankingBot(commands.Cog):
         else:
             await ctx.respond(f"Hold up, you can't do that buddy.", ephemeral=True)
 
-
     @discord.slash_command()
     async def balance(
         self,
         ctx: commands.Context,
-        member: discord.Option(discord.Member, "Select Member", required=True)
+        member: discord.Option(discord.Member, "Select Member", required=True),
     ):
         await ctx.response.defer(ephemeral=True)
 
         guild = GuildObject(server_id=ctx.guild.id)
-
 
         embed = discord.Embed(
             title=f"{member}'s Balance",
             description=f"""
 {guild.to_locale(guild.balance(discord_user_id=member.id))}
                 """,
-            color=discord.Color.red()
+            color=discord.Color.red(),
         )
 
         await ctx.followup.send(embed=embed, ephemeral=True)
-
 
     @discord.slash_command()
     async def transfer(
@@ -984,7 +1167,7 @@ class BankingBot(commands.Cog):
         ctx: commands.Context,
         member: discord.Option(discord.Member, "Select Member", required=True),
         amount: discord.Option(float, "Amount", required=True),
-        reason: discord.Option(str, "Reason for Gifting", required=True)
+        reason: discord.Option(str, "Reason for Gifting", required=True),
     ):
         """Sends a token gift"""
         await ctx.response.defer(ephemeral=True)
@@ -1000,24 +1183,24 @@ class BankingBot(commands.Cog):
             embed = discord.Embed(
                 title=f"Balance too low",
                 description=f"You don't have {guild.to_locale(amount_in_eth)}",
-                color=discord.Color.green()
+                color=discord.Color.green(),
             )
             await ctx.followup.send(embed=embed, ephemeral=True)
         elif ctx.user.id == member.id:
             embed = discord.Embed(
                 title=f"You can't send a gift to yourself",
                 description=f"",
-                color=discord.Color.green()
+                color=discord.Color.green(),
             )
             await ctx.followup.send(embed=embed, ephemeral=True)
         else:
             # Credits token to user
             new_receiver_balance = guild.credit(
-                discord_user_id=member.id, amount=amount_in_eth, note=reason)
+                discord_user_id=member.id, amount=amount_in_eth, note=reason
+            )
 
             # Debits token to discord owner
-            guild.debit(discord_user_id=ctx.user.id,
-                        amount=amount_in_eth, note=reason)
+            guild.debit(discord_user_id=ctx.user.id, amount=amount_in_eth, note=reason)
             embed = discord.Embed(
                 title=f"{ctx.user.display_name} sent a gift :gift_heart:",
                 description=f"""
@@ -1026,19 +1209,21 @@ class BankingBot(commands.Cog):
 **Amount:** `{guild.to_locale(amount_in_eth)}`
 **Balance:** `{guild.to_locale(receiver_balance)}` **-->** `{guild.to_locale(new_receiver_balance)}`
                     """,
-                color=discord.Color.green()
+                color=discord.Color.green(),
             )
 
-            notification_channel_id = get_notification_channel(
-                server_id=ctx.guild.id)
+            notification_channel_id = get_notification_channel(server_id=ctx.guild.id)
 
             if notification_channel_id:
                 # Hall of privacy
                 hall_message = f"<@{ctx.user.id}> is a **GRACIOUS GOD**, and **GIFTED** <@{member.id}> with **{guild.to_locale(amount)}** 💰"
-                await send_notification_message(bot_or_client=ctx.interaction.client, message=hall_message, channel_id=notification_channel_id)
+                await send_notification_message(
+                    bot_or_client=ctx.interaction.client,
+                    message=hall_message,
+                    channel_id=notification_channel_id,
+                )
 
             await ctx.followup.send(embed=embed, ephemeral=True)
-    
 
     @discord.slash_command()
     async def work(
@@ -1046,7 +1231,7 @@ class BankingBot(commands.Cog):
         ctx: commands.Context,
         member: discord.Option(discord.Member, "Select Member", required=True),
         amount: discord.Option(float, "Amount", required=True),
-        ):
+    ):
         """Magically Transfer Tokens - Probably don't use in prod"""
         await ctx.response.defer(ephemeral=True)
 
@@ -1054,11 +1239,10 @@ class BankingBot(commands.Cog):
 
         if ctx.user.id != int(guild.token_collector):
             embed = discord.Embed(
-                title=f"You can't do that buddy",
-                color=discord.Color.red()
+                title=f"You can't do that buddy", color=discord.Color.red()
             )
             await ctx.followup.send(embed=embed, ephemeral=True)
-        
+
         # Convert to wei
         converted_amount = guild.from_eth(amount)
 
@@ -1067,29 +1251,27 @@ class BankingBot(commands.Cog):
         embed = discord.Embed(
             title=f"{member.display_name} has been credited {guild.to_locale(converted_amount)}",
             description="",
-            color=discord.Color.green()
+            color=discord.Color.green(),
         )
 
         await ctx.followup.send(embed=embed, ephemeral=True)
 
-    @tasks.loop(seconds=60*60)
+    @tasks.loop(seconds=60 * 60)
     async def update_banking_view(self):
-        """ Updates the staking embed """
+        """Updates the staking embed"""
 
         print("Updating banking views")
 
         guilds_from_db = Guild.select()
 
         for guild in guilds_from_db:
-
             if guild.bank_channel_id and guild.bank_message_id:
-
                 url = "https://placehold.co/600x400"
 
                 embed = discord.Embed(
                     title="",
                     description="Welcome… How can I help you today?",
-                    color=discord.Color.red()
+                    color=discord.Color.red(),
                 )
 
                 embed.set_image(url=url)
@@ -1099,13 +1281,10 @@ class BankingBot(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
-
         raffle_master_role = await guild.create_role(name="Raffle Master")
 
         create_guild(
-            server_id=guild.id,
-            server_name=guild.name,
-            role_admin=raffle_master_role.id
+            server_id=guild.id, server_name=guild.name, role_admin=raffle_master_role.id
         )
 
     @commands.Cog.listener()
